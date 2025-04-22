@@ -1,4 +1,5 @@
 import inspect
+import psutil
 import os
 import hashlib
 import subprocess
@@ -7,6 +8,7 @@ import datetime
 from shadowcopy import shadow_copy as scopy
 
 args=None
+hostName=""
 reportLog=["datetime,message,detail"]
 acquireList=[]
 
@@ -93,13 +95,39 @@ def acquire(dstDir=os.getcwd()+"\\acqResults"):
             handleExcept(e)
     None
 
+def hostdetails(outpath=os.getcwd()+"\\acqResults"):
+    if not os.path.exists(outpath):
+        os.makedirs(outpath)
+    
+    with open(outpath+f"\\{hostName}-netstat.txt","w") as outf:
+        outf.writelines("netstat -abno")
+        subprocess.Popen("netstat -abno",stdout=outf)
+
+    with open(outpath+f"\\{hostName}-ipconfig.txt","w") as outf:
+        outf.writelines("ipconfig")
+        subprocess.Popen("ipconfig",stdout=outf)
+
+    with open(outpath+f"\\{hostName}-process.txt","w") as outf:
+        res=subprocess.check_output("wmic process").decode("utf-8")
+        outf.write(res)
+
+
+    partition = psutil.disk_partitions()
+    for p in partition:
+        label=p.mountpoint.strip(":\\\\")
+        outp = outpath+f"\\{hostName}-directorylist_{label}.txt"
+        os.system(f"dir {p.mountpoint} /A /OD /S > {outp}")
+    None
+    
 def main():
+    global hostName
     print(f"Acquisition begun @{str(datetime.datetime.now())}")
-    appendLogTime("Acquisition of device",str(subprocess.check_output(["hostname"])))
+    hostName=subprocess.check_output("hostname").decode("utf-8").strip("\r\n")
+    appendLogTime(f"Acquisition of device {hostName}",hostName)
+    hostdetails()
     acquire()
     writeReport()
     print(f"Acquisition completed @{str(datetime.datetime.now())}")
-    #debug("mrow")
     None
 
 if __name__ == "__main__":
