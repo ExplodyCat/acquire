@@ -81,12 +81,27 @@ def acquire(dstDir=os.getcwd()+"\\acqResults"):
     for cur in reghives:
         getFile(cur,regOutDir) #Acquire critical windows registry hives
 
-    for cur in os.listdir("C:\\Users"):
-        tPath="C:\\Users\\"+cur
-        src=tPath+"\\NTUSER.DAT"
-        regOutDirCur=regOutDir+"\\"+cur
-        if(os.path.isdir(tPath) and os.path.exists(src)):
-            getFile(src, regOutDirCur)
+    for curUser in os.listdir("C:\\Users"):
+        tPath="C:\\Users\\"+curUser
+        if(os.path.isdir(tPath)):
+            src=tPath+"\\NTUSER.DAT"
+            if(os.path.exists(src)):
+                getFile(src, f"{regOutDir}\\{curUser}")
+            src=tPath+"\\AppData\\Local\\Microsoft\\Windows\\UsrClass.dat" #Acquire registry hive specific to Shellbags
+            if(os.path.exists(src)):
+                getFile(src, f"{regOutDir}\\{curUser}")
+
+            #Acquire current user's jumplist files
+            jmplistOutDir=dstDir+"\\jumplists\\"+curUser      
+            jmplistDir=tPath+"\\AppData\\Roaming\\Microsoft\\Windows\\Recent\\AutomaticDestinations"
+            if(os.path.exists(jmplistDir)):
+                for curFile in os.listdir(jmplistDir):
+                    getFile(f"{jmplistDir}\\{curFile}",jmplistOutDir+"\\AutomaticDestinations")
+            jmplistDir=tPath+"\\AppData\\Roaming\\Microsoft\\Windows\\Recent\\CustomDestinations"
+            if(os.path.exists(jmplistDir)):
+                for curFile in os.listdir(jmplistDir):
+                    getFile(f"{jmplistDir}\\{curFile}",jmplistOutDir+"\\CustomDestinations")
+            
 
     for cur in acquireList:
         try:
@@ -107,14 +122,15 @@ def hostdetails(outpath=os.getcwd()+"\\acqResults"):
         outf.writelines("ipconfig")
         subprocess.Popen("ipconfig",stdout=outf)
 
-    with open(outpath+f"\\{hostName}-process.txt","w") as outf:
-        res=subprocess.check_output("wmic process").decode("utf-8")
-        outf.write(res)
+    outp = outpath+f"\\{hostName}-process"
+    os.system(f"wmic process list /format:csv > {outp}.csv")
+    os.system(f"wmic process list /format:value > {outp}.txt")
 
-
-    partition = psutil.disk_partitions()
-    for p in partition:
-        label=p.mountpoint.strip(":\\\\")
+    outp = outpath+f"\\{hostName}-schtasks.csv"
+    os.system(f"schtasks /Query /FO CSV /V > {outp}")
+    
+    for p in psutil.disk_partitions():
+        label = p.mountpoint.strip(":\\\\")
         outp = outpath+f"\\{hostName}-directorylist_{label}.txt"
         os.system(f"dir {p.mountpoint} /A /OD /S > {outp}")
     None
